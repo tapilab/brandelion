@@ -98,3 +98,44 @@
    Fetching tweets for ClimateReality
    fetched 200 more tweets for ClimateReality
    ```
+
+7. Collect tweets for a representative sample of accounts, stored in `sample.txt`.
+   ```
+   $ cat $BRANDELION/sample.txt
+   RedCross
+   TobaccoFreeKids
+   CFR_org
+   Habitat_org
+   PRI
+
+   $ brandelion collect --tweets -i $BRANDELION/sample.txt  -o $BRANDELION/sample_tweets.json -m 200
+   fetching tweets for accounts in /data/brandelion/sample.txt
+
+   Fetching tweets for RedCross
+   fetched 200 more tweets for RedCross
+
+   Fetching tweets for TobaccoFreeKids
+   fetched 200 more tweets for TobaccoFreeKids
+
+    Fetching tweets for CFR_org
+   fetched 200 more tweets for CFR_org
+
+   Fetching tweets for Habitat_org
+   fetched 200 more tweets for Habitat_org
+
+   Fetching tweets for PRI
+   fetched 200 more tweets for PRI
+   ```
+7. Compute the social scores between the brands and the exemplars, based on network properties. (In this example, there is no follower overlap, so scores are 0.)
+   ```
+   $ brandelion analyze --network --brand-followers $BRANDELION/brand_followers.txt --exemplar-followers $BRANDELION/exemplar_followers.txt --output $BRANDELION/social_scores.txt
+   read follower data for 5 brands and 5 exemplars
+   results written to /data/brandelion/social_scores.txt
+
+   $ cat /data/brandelion/social_scores.txt
+   5hourenergy 0.000000
+   18Rabbits 0.000000
+   7UP 0.000000
+   100percentpure 0.000000
+   34Degrees 0.000000
+   ```
