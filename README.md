@@ -54,3 +54,47 @@
    Fetching tweets for 5hourenergy
    fetched 200 more tweets for 5hourenergy
    ```
+
+5. Create a file called `exemplars.txt` containing exemplars for the dimension you wish to analyze. For example, here we choose environmental friendliness.
+   ```
+   $ cat $BRANDELION/exemplars.txt
+   GreenPeace
+   EnvDefenseFund
+   globalgreen
+   OurOcean
+   ClimateReality
+   ```
+
+6. Repeat the follower and tweet collection steps above, writing to `exemplar_followers.txt` and `exemplar_tweets.json`:
+   ```
+   $ brandelion collect --followers -i $BRANDELION/exemplars.txt  -o $BRANDELION/exemplar_followers.txt -m 100
+   Fetching followers for accounts in /data/brandelion/exemplars.txt
+   collecting followers for GreenPeace
+   fetched 5000 more followers for 3459051
+   collecting followers for EnvDefenseFund
+   fetched 5000 more followers for 20068053
+   collecting followers for globalgreen
+   fetched 5000 more followers for 19409588
+   collecting followers for OurOcean
+   fetched 5000 more followers for 71019945
+   collecting followers for ClimateReality
+   fetched 5000 more followers for 16958346
+
+   $ brandelion collect --tweets -i $BRANDELION/exemplars.txt  -o $BRANDELION/exemplar_tweets.json -m 200
+   fetching tweets for accounts in /data/brandelion/exemplars.txt
+
+   Fetching tweets for GreenPeace
+   fetched 200 more tweets for GreenPeace
+
+   Fetching tweets for EnvDefenseFund
+   fetched 200 more tweets for EnvDefenseFund
+
+   Fetching tweets for globalgreen
+   fetched 200 more tweets for globalgreen
+
+   Fetching tweets for OurOcean
+   fetched 200 more tweets for OurOcean
+
+   Fetching tweets for ClimateReality
+   fetched 200 more tweets for ClimateReality
+   ```
