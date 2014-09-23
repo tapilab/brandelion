@@ -26,7 +26,7 @@ setup(
     long_description=readme + '\n\n' + history,
     author='Aron Culotta',
     author_email='aronwc@gmail.com',
-    url='https://github.com/aronwc/brandelion',
+    url='https://github.com/tapilab/brandelion',
     packages=[
         'brandelion',
     ],
@@ -49,6 +49,14 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
+    entry_points={
+        'console_scripts': [
+            'brandelion = brandelion.cli.brandelion:main',
+            'brandelion-collect = brandelion.cli.collect:main',
+            'brandelion-analyze = brandelion.cli.analyze:main',
+            'brandelion-report = brandelion.cli.report:main',
+        ],
+    },
     test_suite='tests',
     tests_require=test_requirements
 )
