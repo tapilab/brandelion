@@ -139,3 +139,27 @@
    100percentpure 0.000000
    34Degrees 0.000000
    ```
+
+8. Compute scores for each brand based on textual overlap with exemplars.
+   ```
+   $ brandelion analyze --text --brand-tweets $BRANDELION/brand_tweets.json --exemplar-tweets $BRANDELION/exemplar_tweets.json --sample-tweets $BRANDELION/sample_tweets.json --output $BRANDELION/text_scores.txt
+   read 5 exemplars, 5 brands, 5 sample accounts
+   top 10 ngrams:
+   york city=5
+   000 people=4
+   the planet=4
+   hashtagpeoplesclimate march=4
+   hashtagpeoplesclimate hashtagpeoplesclimate=4
+   marching for=4
+   hashtagactonclimate hashtagactonclimate=4
+   join the=4
+   climate action=4
+   our climate=4
+
+   $ cat $BRANDELION/text_scores.txt
+   7UP 0.053655
+   100percentpure 0.100966
+   18Rabbits 0.105482
+   34Degrees 0.086343
+   5hourenergy 0.090429
+   ```
