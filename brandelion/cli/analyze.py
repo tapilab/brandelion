@@ -3,8 +3,8 @@
 """Analyze social and linguistic brand data.
 
 usage:
-    brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file> --output <file>
-    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file>
+    brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file>  --output <file> [--text-method <string>]
+    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>]
 
 Options
     -h, --help
@@ -13,22 +13,26 @@ Options
     --exemplar-followers <file>   File containing follower data for exemplar accounts.
     --exemplar-tweets <file>      File containing tweets from exemplar accounts.
     --sample-tweets <file>        File containing tweets from representative sample of Twitter.
+    --text-method <string>        Method to do text analysis [default: chi2]
+    --network-method <string>     Method to do text analysis [default: jaccard]
     -o, --output <file>           File to store results
     -t, --text                    Analyze text of tweets.
     -n, --network                 Analyze followers.
 """
 
+from collections import Counter
 from docopt import docopt
 import io
 from itertools import groupby
 import json
+import math
 import numpy as np
 import re
 from scipy.sparse import vstack
 import sys
 
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_selection import chi2
+from sklearn.feature_selection import chi2 as skchi2
 from sklearn import linear_model
 
 
@@ -39,7 +43,7 @@ def parse_json(json_file):
     for line in io.open(json_file, mode='rt', encoding='utf8'):
         try:
             jj = json.loads(line)
-            yield (jj['user']['screen_name'], jj['text'])
+            yield (jj['user']['screen_name'].lower(), jj['text'])
         except Exception as e:
             sys.stderr.write('skipping json error: %s\n' % e)
 
@@ -82,13 +86,13 @@ def vectorize(json_file, vec, dofit=True):
     return screen_names, X
 
 
-def score_words_by_chi2(exemplars, samples, n=300):
+def chi2(exemplars, samples, n=300):
     y = np.array(([1.] * exemplars.shape[0]) + ([.0] * samples.shape[0]))
     X = vstack((exemplars, samples)).tocsr()
     clf = linear_model.LogisticRegression(penalty='l2')
     clf.fit(X, y)
     coef = clf.coef_[0]
-    chis, pvals = chi2(X, y)
+    chis, pvals = skchi2(X, y)
     top_indices = chis.argsort()[::-1]
     top_indices = [i for i in top_indices if coef[i] > 0]
     for idx in range(len(coef)):
@@ -110,7 +114,7 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
     print 'read %d exemplars, %d brands, %d sample accounts' % (exemplar_vectors.shape[0],
                                                                 brand_vectors.shape[0],
                                                                 sample_vectors.shape[0])
-    scores = score_words_by_chi2(exemplar_vectors, sample_vectors)
+    scores = chi2(exemplar_vectors, sample_vectors)
     vocab = vec.get_feature_names()
     print 'top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]])
     outf = open(outfile, 'wt')
@@ -128,28 +132,67 @@ def read_follower_file(fname):
     with open(fname, 'rt') as f:
         for line in f:
             parts = line.split()
-            result[parts[0]] = set(parts[2:])
+            if len(parts) > 2:
+                result[parts[0].lower()] = set(int(x) for x in parts[2:])
     return result
 
 
-def jaccard(a, b):
+def _jaccard(a, b):
     """ Return the Jaccard similarity between two sets a and b. """
     return 1. * len(a & b) / len(a | b)
 
 
-def compute_social_score(followers, exemplars, sim_fn=jaccard):
-    """ Return the average similarity between a brand's followers and the
+def jaccard(brands, exemplars):
+    """ Return the average Jaccard similarity between a brand's followers and the
     followers of each exemplar. """
-    return 1. * sum([sim_fn(followers, others) for others in exemplars.itervalues()]) / len(exemplars)
+    scores = {}
+    for brand in sorted(brands):
+        scores[brand] = 1. * sum([_jaccard(brands[brand], others) for others in exemplars.itervalues()]) / len(exemplars)
+        print '%s %f' % (brand, scores[brand])
+    return scores
 
 
-def analyze_followers(brand_follower_file, exemplar_follower_file, outfile):
+def compute_log_degrees(brands, exemplars):
+    """ For each follower, let Z be the total number of brands they follow.
+    Return a dictionary of 1. / log(Z), for each follower.
+    """
+    counts = Counter()
+    for followers in brands.values():  # + exemplars.values():  # Include exemplars in these counts? No, don't want to penalize people who follow many exemplars.
+        counts.update(followers)
+    # This is too slow. # print 'most common followers out of', len(counts), ':\n', '\n'.join('%s %d' % (name, count) for (name, count) in sorted(counts.items(), key=lambda x: -x[1])[:10])
+    counts.update(counts.keys())  # Add 1 to each count.
+    for k in counts:
+        counts[k] = 1. / math.log(counts[k])
+    return counts
+
+
+def adamic(brands, exemplars):
+    """ Return the average Adamic/Adar similarity between a brand's followers and the
+    followers of each exemplar. We approximate the number of followed accounts per user by only considering  """
+    degrees = compute_log_degrees(brands, exemplars)
+    scores = {}
+    exemplar_sums = dict([(exemplar, sum(degrees[z] for z in exemplars[exemplar])) for exemplar in exemplars])
+
+    for brand in sorted(brands):
+        brand_sum = sum(degrees[z] for z in brands[brand])
+        total = 0.
+        for exemplar in exemplars:
+            total += sum(degrees[z] for z in brands[brand] & exemplars[exemplar]) / (brand_sum + exemplar_sums[exemplar])
+        scores[brand] = total / len(exemplars)
+    return scores
+
+
+def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn):
     brands = read_follower_file(brand_follower_file)
     exemplars = read_follower_file(exemplar_follower_file)
     print 'read follower data for %d brands and %d exemplars' % (len(brands), len(exemplars))
+    analyze = getattr(sys.modules[__name__], analyze_fn)
+    scores = analyze(brands, exemplars)
+    # scores = compute_social_scores_jaccard(brands, exemplars)
+    # scores = compute_social_scores_adamic(brands, exemplars)
     outf = open(outfile, 'wt')
-    for brand, followers in brands.iteritems():
-        outf.write('%s %f\n' % (brand, compute_social_score(followers, exemplars)))
+    for brand in sorted(scores):
+        outf.write('%s %f\n' % (brand, scores[brand]))
         outf.flush()
     outf.close()
     print 'results written to', outfile
@@ -157,10 +200,11 @@ def analyze_followers(brand_follower_file, exemplar_follower_file, outfile):
 
 def main():
     args = docopt(__doc__)
+    print args
     if args['--network']:
-        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'])
-    elif args['--text']:
-        analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'])
+        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'])
+    if args['--text']:
+        analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'], args['--text-method'])
 
 
 if __name__ == '__main__':
