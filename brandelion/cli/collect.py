@@ -4,6 +4,7 @@
 
 usage:
     brandelion collect (--tweets | --followers) --input <file> --output <file> --max=<N>
+    brandelion collect --exemplars --query <string>  --output <file>
 
 Options
     -h, --help
@@ -11,12 +12,19 @@ Options
     -o, --output <file>             File to store results
     -t, --tweets                    Fetch tweets.
     -f, --followers                 Fetch followers
-    -m, --max=<N>                   Maximum number of followers or tweets to collect per account [default: 1e10].
+    -e, --exemplars                 Fetch exemplars from Twitter lists
+    -q, --query <string>            A single string used to search for Twitter lists.
+    -m, --max=<N>                   Maximum number of followers or tweets to collect per account [default: 50000].
 """
 
+from collections import Counter
 from docopt import docopt
 import io
 import json
+import re
+import requests
+import sys
+import traceback
 
 import twutil
 
@@ -34,8 +42,7 @@ def fetch_followers(account_file, outfile, limit):
     """ Fetch up to limit followers for each Twitter account in
     account_file. Write results to outfile file in format:
 
-    screen_name user_id follower_id_1 follower_id_2 ...
-    """
+    screen_name user_id follower_id_1 follower_id_2 ..."""
     print 'Fetching followers for accounts in', account_file
     outf = open(outfile, 'wb')
     for screen_name in iter_lines(account_file):
@@ -63,10 +70,41 @@ def fetch_tweets(account_file, outfile, limit):
             outf.flush()
 
 
+def fetch_exemplars(keyword, outfile, n=2):
+    """ Fetch top lists matching this keyword, then return Twitter screen
+    names that appear on at least n lists. """
+    url= 'https://twitter.com/search?q=%s&src=typd&mode=timelines' % keyword
+    print 'fetching', url
+    counts = Counter()
+    try:
+        text = requests.get(url).text
+        # Find all lists on the first page of results
+        for screen_name, slug in re.findall(r'<a class=\"js-nav\" data-nav=\"list_members\" href=\"\/([^\/]+)\/lists\/([^\/]+)\/members"', text):
+            members = twutil.collect.list_members(slug, screen_name)
+            if len(members) > 0:
+                counts.update(members)
+    except:
+        print 'unable to fetch url'
+        ex_type, ex, tb = sys.exc_info()
+        traceback.print_tb(tb)
+        print ex
+    # Keep those appearing at least n times.
+    exemplars = [name for name in counts if counts[name] >= n]
+    # Write to file.
+    outf = open(outfile, 'wb')
+    outf.write('\n'.join(exemplars))
+    outf.close()
+    print 'saved exemplars to', outfile
+
+
 def main():
     args = docopt(__doc__)
-    action = fetch_followers if args['--followers'] else fetch_tweets
-    action(args['--input'], args['--output'], int(args['--max']))
+    if args['--followers']:
+        fetch_followers(args['--input'], args['--output'], int(args['--max']))
+    elif args['--tweets']:
+        fetch_tweets(args['--input'], args['--output'], int(args['--max']))
+    else:
+        fetch_exemplars(args['--query'], args['--output'])
 
 
 if __name__ == '__main__':
