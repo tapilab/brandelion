@@ -3,7 +3,8 @@
 """Collect Twitter data for brands.
 
 usage:
-    brandelion collect (--tweets | --followers) --input <file> --output <file> --max=<N>
+    brandelion collect --tweets --input <file> --output <file> --max=<N>
+    brandelion collect --followers --input <file> --output <file> --max=<N>
     brandelion collect --exemplars --query <string>  --output <file>
 
 Options
