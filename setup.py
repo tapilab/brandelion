@@ -54,6 +54,7 @@ setup(
             'brandelion = brandelion.cli.brandelion:main',
             'brandelion-collect = brandelion.cli.collect:main',
             'brandelion-analyze = brandelion.cli.analyze:main',
+            'brandelion-diagnose = brandelion.cli.diagnose:main',
             'brandelion-report = brandelion.cli.report:main',
         ],
     },
