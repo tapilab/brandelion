@@ -20,7 +20,7 @@ Options
     -n, --network                 Analyze followers.
 """
 
-from collections import Counter
+from collections import Counter, defaultdict
 from docopt import docopt
 import io
 from itertools import groupby
@@ -137,18 +137,45 @@ def read_follower_file(fname):
     return result
 
 
+def iter_follower_file(fname):
+    """ Iterator from a file of follower information and return a tuple of screen_name, follower ids. """
+    with open(fname, 'rt') as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) > 2:
+                yield parts[0].lower(), set(int(x) for x in parts[2:])
+
+
 def _jaccard(a, b):
     """ Return the Jaccard similarity between two sets a and b. """
     return 1. * len(a & b) / len(a | b)
 
 
-def jaccard(brands, exemplars):
+def jaccard(brands, exemplars, weighted_avg=True):
     """ Return the average Jaccard similarity between a brand's followers and the
     followers of each exemplar. """
     scores = {}
-    for brand in sorted(brands):
-        scores[brand] = 1. * sum([_jaccard(brands[brand], others) for others in exemplars.itervalues()]) / len(exemplars)
-        print '%s %f' % (brand, scores[brand])
+    for brand, followers in brands:
+        if weighted_avg:
+            scores[brand] = np.average([_jaccard(followers, others) for others in exemplars.itervalues()],
+                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+        else:
+            scores[brand] = 1. * sum(_jaccard(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+        # limit to exemplars with less than 40k followers:  scores[brand] = 1. * sum(_jaccard(brands[brand], others) for others in exemplars.itervalues() if len(others) < 40000) / len(exemplars)
+    return scores
+
+
+def jaccard_merge(brands, exemplars, weighted_avg=True):
+    """ Return the average Jaccard similarity between a brand's followers and
+    the followers of each exemplar. We merge all exemplar followers into one
+    big pseudo-account."""
+    scores = {}
+    exemplar_followers = set()
+    for followers in exemplars.itervalues():
+        exemplar_followers |= followers
+
+    for brand, followers in brands:
+        scores[brand] = _jaccard(followers, exemplar_followers)
     return scores
 
 
@@ -159,7 +186,6 @@ def compute_log_degrees(brands, exemplars):
     counts = Counter()
     for followers in brands.values():  # + exemplars.values():  # Include exemplars in these counts? No, don't want to penalize people who follow many exemplars.
         counts.update(followers)
-    # This is too slow. # print 'most common followers out of', len(counts), ':\n', '\n'.join('%s %d' % (name, count) for (name, count) in sorted(counts.items(), key=lambda x: -x[1])[:10])
     counts.update(counts.keys())  # Add 1 to each count.
     for k in counts:
         counts[k] = 1. / math.log(counts[k])
@@ -167,8 +193,11 @@ def compute_log_degrees(brands, exemplars):
 
 
 def adamic(brands, exemplars):
-    """ Return the average Adamic/Adar similarity between a brand's followers and the
-    followers of each exemplar. We approximate the number of followed accounts per user by only considering  """
+    """ Return the average Adamic/Adar similarity between a brand's followers
+    and the followers of each exemplar. We approximate the number of followed
+    accounts per user by only considering those in our brand set."""
+    print 'adamic deprecated...requires loading all brands in memory.'
+    return
     degrees = compute_log_degrees(brands, exemplars)
     scores = {}
     exemplar_sums = dict([(exemplar, sum(degrees[z] for z in exemplars[exemplar])) for exemplar in exemplars])
@@ -182,14 +211,36 @@ def adamic(brands, exemplars):
     return scores
 
 
+def compute_rarity_scores(exemplars):
+    """ Compute a score for each follower that is sum_i (1/n_i), where n_i is
+    the degree of the ith exemplar they follow.
+    >>> compute_rarity_scores({'e1':{1,2,3,4}, 'e2':{4,5}}).items()
+    [(1, 0.25), (2, 0.25), (3, 0.25), (4, 0.75), (5, 0.5)]
+    """
+    scores = defaultdict(lambda: 0.)
+    for followers in exemplars.values():
+        score = 1. / len(followers)
+        for f in followers:
+            scores[f] += score
+    return scores
+
+
+def rarity(brands, exemplars):
+    """ Compute a score for each follower that is sum_i (1/n_i), where n_i is the degree of the ith exemplar they follow.
+    The score for a brand is then the average of their follower scores."""
+    rarity = compute_rarity_scores(exemplars)
+    scores = {}
+    for brand, followers in brands:
+        scores[brand] = sum(rarity[f] for f in followers) / len(followers)
+    return scores
+
+
 def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn):
-    brands = read_follower_file(brand_follower_file)
+    brands = iter_follower_file(brand_follower_file)
     exemplars = read_follower_file(exemplar_follower_file)
-    print 'read follower data for %d brands and %d exemplars' % (len(brands), len(exemplars))
+    print 'read follower data for %d exemplars' % (len(exemplars))
     analyze = getattr(sys.modules[__name__], analyze_fn)
     scores = analyze(brands, exemplars)
-    # scores = compute_social_scores_jaccard(brands, exemplars)
-    # scores = compute_social_scores_adamic(brands, exemplars)
     outf = open(outfile, 'wt')
     for brand in sorted(scores):
         outf.write('%s %f\n' % (brand, scores[brand]))
