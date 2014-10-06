@@ -6,8 +6,9 @@ A social media brand analysis tool.
 usage: brandelion [--help] <command> [<args>...]
 
 The most commonly used brandelion commands are:
-     collect    Collect brand Twitter information.
      analyze    Compute brand analytics scores.
+     collect    Collect brand Twitter information.
+     diagnose   Run diagnostics.
      report     Summarize the results of the analysis
 See 'brandelion help <command>' for more information on a specific command.
 
@@ -17,7 +18,7 @@ from docopt import docopt
 
 from .. import __version__
 
-CMDS = ['collect', 'analyze', 'report']
+CMDS = ['analyze', 'collect', 'diagnose', 'report']
 
 
 def main():
