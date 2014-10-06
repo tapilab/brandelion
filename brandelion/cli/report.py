@@ -13,6 +13,7 @@ Options
 """
 
 from docopt import docopt
+import matplotlib.pyplot as plt
 import scipy.stats as scistat
 
 
@@ -25,18 +26,33 @@ def read_scores(fname):
     return scores
 
 
-def validate(scores, validation):
+def validate(scores, validation, outdir):
     keys = sorted(validation.keys())
+    keys = list(set(keys) & set(scores.keys()))
     predicted = [scores[k] for k in keys]
     truth = [validation[k] for k in keys]
-    print 'Pearson:', scistat.pearsonr(predicted, truth)
+    corr = scistat.pearsonr(predicted, truth)
+    print 'Pearson:', corr
+    plt.scatter(predicted, truth)
+    plt.xlabel('predicted')
+    plt.ylabel('truth')
+    plt.xlim(min(predicted), max(predicted))
+    plt.ylim(min(truth), max(truth))
+    for x, y, label in zip(predicted, truth, keys):
+        plt.annotate(label, xy=(x, y), xytext=(0, 0),
+                     textcoords='offset points', size='10',
+                     bbox=dict(boxstyle='round,pad=0.0', edgecolor='white',
+                               fc='white', alpha=0.9))
+    plt.title('r(%d)=%.3f (p=%g)' % (len(truth), corr[0], corr[1]))
+    plt.savefig(outdir + '/scatter.pdf')
+    plt.show()
 
 
 def main():
     args = docopt(__doc__)
     scores = read_scores(args['--scores'])
     if args['--validation']:
-        validate(scores, read_scores(args['--validation']))
+        validate(scores, read_scores(args['--validation']), args['--output'])
 
 
 if __name__ == '__main__':
