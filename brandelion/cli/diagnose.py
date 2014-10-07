@@ -4,7 +4,6 @@
 
 usage:
     brandelion diagnose --network --brand-followers <file> --exemplar-followers <file> --validation <file> [--network-method <string>]
-    brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file>  --validation <file> [--text-method <string>]
 
 Options
     -h, --help
@@ -48,7 +47,7 @@ def diagnose_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, v
 
 def correlation_by_exemplar(brands, exemplars, validation_scores):
     """ Report the overall correlation with the validation scores using each exemplar in isolation. """
-    keys = sorted(validation_scores.keys())
+    keys = sorted(k for k in validation_scores.keys() if k in set(x[0] for x in brands))
     truth = [validation_scores[k] for k in keys]
     sample = random.sample(keys, 10)
     print 'exemplar\tcorr\tn_followers\texamples\n'
@@ -62,9 +61,9 @@ def correlation_by_exemplar(brands, exemplars, validation_scores):
 
 
 def diagnose_followers(brand_follower_file, exemplar_follower_file, validation_file, analyze_fn):
-    brands = analyze.read_follower_file(brand_follower_file)
+    brands = analyze.read_follower_file(brand_follower_file).items()
     exemplars = analyze.read_follower_file(exemplar_follower_file)
-    print 'read follower data for %d brands and %d exemplars' % (len(brands), len(exemplars))
+    print 'read follower data for %d exemplars' % (len(exemplars))
     scores = report.read_scores(validation_file)
     correlation_by_exemplar(brands, exemplars, scores)
 
