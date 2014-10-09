@@ -4,7 +4,7 @@
 
 usage:
     brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file>  --output <file> [--text-method <string>]
-    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>]
+    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>  --min-followers <n>]
 
 Options
     -h, --help
@@ -18,6 +18,7 @@ Options
     -o, --output <file>           File to store results
     -t, --text                    Analyze text of tweets.
     -n, --network                 Analyze followers.
+    --min-followers <n>           Ignore exemplars that don't have at least n followers [default: 0]
 """
 
 from collections import Counter, defaultdict
@@ -27,6 +28,7 @@ from itertools import groupby
 import json
 import math
 import numpy as np
+import os
 import re
 from scipy.sparse import vstack
 import sys
@@ -35,8 +37,10 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_selection import chi2 as skchi2
 from sklearn import linear_model
 
+from . import report
 
 ### TEXT ANALYSIS ###
+
 
 def parse_json(json_file):
     """ Yield screen_name, text tuples from a json file. """
@@ -126,14 +130,16 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
 ### FOLLOWER ANALYSIS ###
 
 
-def read_follower_file(fname):
+def read_follower_file(fname, min_followers=0):
     """ Read a file of follower information and return a dictionary mapping screen_name to a set of follower ids. """
     result = {}
     with open(fname, 'rt') as f:
         for line in f:
             parts = line.split()
             if len(parts) > 2:
-                result[parts[0].lower()] = set(int(x) for x in parts[2:])
+                followers = set(int(x) for x in parts[2:])
+                if len(followers) > min_followers:
+                    result[parts[0].lower()] = followers
     return result
 
 
@@ -235,12 +241,41 @@ def rarity(brands, exemplars):
     return scores
 
 
-def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn):
+def compute_rarity_scores_log(exemplars):
+    """ Compute a score for each follower that is sum_i (1/n_i), where n_i is
+    the degree of the ith exemplar they follow.
+    >>> compute_rarity_scores({'e1':{1,2,3,4}, 'e2':{4,5}}).items()
+    [(1, 0.25), (2, 0.25), (3, 0.25), (4, 0.75), (5, 0.5)]
+    """
+    scores = defaultdict(lambda: 0.)
+    for followers in exemplars.values():
+        score = 1. / math.log(len(followers))
+        for f in followers:
+            scores[f] += score
+    return scores
+
+
+def rarity_log(brands, exemplars):
+    """ Compute a score for each follower that is sum_i (1/log(n_i)), where n_i is the degree of the ith exemplar they follow.
+    The score for a brand is then the average of their follower scores."""
+    rarity = compute_rarity_scores_log(exemplars)
+    scores = {}
+    for brand, followers in brands:
+        scores[brand] = sum(rarity[f] for f in followers) / len(followers)
+    return scores
+
+
+def mkdirs(filename):
+    report.mkdirs(os.path.dirname(filename))
+
+
+def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn, min_followers):
     brands = iter_follower_file(brand_follower_file)
-    exemplars = read_follower_file(exemplar_follower_file)
+    exemplars = read_follower_file(exemplar_follower_file, min_followers)
     print 'read follower data for %d exemplars' % (len(exemplars))
     analyze = getattr(sys.modules[__name__], analyze_fn)
     scores = analyze(brands, exemplars)
+    mkdirs(outfile)
     outf = open(outfile, 'wt')
     for brand in sorted(scores):
         outf.write('%s %f\n' % (brand, scores[brand]))
@@ -253,7 +288,7 @@ def main():
     args = docopt(__doc__)
     print args
     if args['--network']:
-        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'])
+        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'], int(args['--min-followers']))
     if args['--text']:
         analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'], args['--text-method'])
 
