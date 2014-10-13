@@ -4,7 +4,7 @@
 
 usage:
     brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file>  --output <file> [--text-method <string>]
-    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>  --min-followers <n>]
+    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>  --min-followers <n> --sample-exemplars <p> --seed <s>]
 
 Options
     -h, --help
@@ -19,6 +19,8 @@ Options
     -t, --text                    Analyze text of tweets.
     -n, --network                 Analyze followers.
     --min-followers <n>           Ignore exemplars that don't have at least n followers [default: 0]
+    --sample-exemplars <p>        Sample p percent of the exemplars, uniformly at random. [default: 100]
+    --seed <s>                    Seed for random sampling. [default: 12345]
 """
 
 from collections import Counter, defaultdict
@@ -30,6 +32,7 @@ import math
 import numpy as np
 import os
 import re
+import random
 from scipy.sparse import vstack
 import sys
 
@@ -123,7 +126,7 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
     print 'top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]])
     outf = open(outfile, 'wt')
     for bi, brand_vec in enumerate(brand_vectors):
-        outf.write('%s %f\n' % (brands[bi], do_score(brand_vec, scores)))
+        outf.write('%s %g\n' % (brands[bi], do_score(brand_vec, scores)))
         outf.flush()
 
 
@@ -269,16 +272,20 @@ def mkdirs(filename):
     report.mkdirs(os.path.dirname(filename))
 
 
-def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn, min_followers):
+def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn,
+                      min_followers, sample_exemplars):
     brands = iter_follower_file(brand_follower_file)
     exemplars = read_follower_file(exemplar_follower_file, min_followers)
     print 'read follower data for %d exemplars' % (len(exemplars))
+    if sample_exemplars < 100:  # sample a subset of exemplars.
+        exemplars = dict([(k, exemplars[k]) for k in random.sample(exemplars.keys(), int(len(exemplars) * sample_exemplars / 100.))])
+        print 'sampled %d exemplars' % (len(exemplars))
     analyze = getattr(sys.modules[__name__], analyze_fn)
     scores = analyze(brands, exemplars)
     mkdirs(outfile)
     outf = open(outfile, 'wt')
     for brand in sorted(scores):
-        outf.write('%s %f\n' % (brand, scores[brand]))
+        outf.write('%s %g\n' % (brand, scores[brand]))
         outf.flush()
     outf.close()
     print 'results written to', outfile
@@ -287,8 +294,11 @@ def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, anal
 def main():
     args = docopt(__doc__)
     print args
+    if '--seed' in args:
+        random.seed(args['--seed'])
     if args['--network']:
-        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'], int(args['--min-followers']))
+        analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'],
+                          int(args['--min-followers']), float(args['--sample-exemplars']))
     if args['--text']:
         analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'], args['--text-method'])
 
