@@ -38,27 +38,28 @@ def read_scores(fname):
     return scores
 
 
-def validate(scores, validation, title, outdir):
+def validate(scores, validation, title, outdir, doplot=True):
     keys = sorted(validation.keys())
     keys = list(set(keys) & set(scores.keys()))
     predicted = [scores[k] for k in keys]
     truth = [validation[k] for k in keys]
     corr = scistat.pearsonr(predicted, truth)
     print 'Pearson:', corr
-    plt.figure()
-    plt.scatter(predicted, truth)
-    plt.xlabel('predicted')
-    plt.ylabel('truth')
-    plt.xlim(min(predicted), max(predicted))
-    plt.ylim(min(truth), max(truth))
-    for x, y, label in zip(predicted, truth, keys):
-        plt.annotate(label, xy=(x, y), xytext=(0, 0),
-                     textcoords='offset points', size='10',
-                     bbox=dict(boxstyle='round,pad=0.0', edgecolor='white',
-                               fc='white', alpha=0.9))
-    plt.title('%s\nr(%d)=%.3f (p=%g)' % (title, len(truth), corr[0], corr[1]))
-    plt.savefig(outdir + '/scatter.pdf')
-    plt.show()
+    if doplot:
+        plt.figure()
+        plt.scatter(predicted, truth)
+        plt.xlabel('predicted')
+        plt.ylabel('truth')
+        plt.xlim(min(predicted), max(predicted))
+        plt.ylim(min(truth), max(truth))
+        for x, y, label in zip(predicted, truth, keys):
+            plt.annotate(label, xy=(x, y), xytext=(0, 0),
+                         textcoords='offset points', size='10',
+                         bbox=dict(boxstyle='round,pad=0.0', edgecolor='white',
+                                   fc='white', alpha=0.9))
+            plt.title('%s\nr(%d)=%.3f (p=%g)' % (title, len(truth), corr[0], corr[1]))
+            plt.savefig(outdir + '/scatter.pdf')
+            plt.show()
     return corr[0]
 
 
