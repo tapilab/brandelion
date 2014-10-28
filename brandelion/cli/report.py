@@ -58,8 +58,8 @@ def validate(scores, validation, title, outdir, doplot=True):
                          bbox=dict(boxstyle='round,pad=0.0', edgecolor='white',
                                    fc='white', alpha=0.9))
             plt.title('%s\nr(%d)=%.3f (p=%g)' % (title, len(truth), corr[0], corr[1]))
-            plt.savefig(outdir + '/scatter.pdf')
-            plt.show()
+        plt.savefig(outdir + '/scatter.pdf')
+        plt.show()
     return corr[0]
 
 
