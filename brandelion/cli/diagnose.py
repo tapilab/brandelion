@@ -45,19 +45,23 @@ def diagnose_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, v
     pass
 
 
-def correlation_by_exemplar(brands, exemplars, validation_scores):
+def correlation_by_exemplar(brands, exemplars, validation_scores, analyze_fn_str):
     """ Report the overall correlation with the validation scores using each exemplar in isolation. """
+    analyze_fn = getattr(analyze, analyze_fn_str)
     keys = sorted(k for k in validation_scores.keys() if k in set(x[0] for x in brands))
     truth = [validation_scores[k] for k in keys]
     sample = random.sample(keys, 10)
+    result = {}
     print 'exemplar\tcorr\tn_followers\texamples\n'
     for exemplar in exemplars:
         single_exemplar = {exemplar: exemplars[exemplar]}
-        social_scores = analyze.jaccard(brands, single_exemplar)
+        social_scores = analyze_fn(brands, single_exemplar)
         predicted = [social_scores[k] for k in keys]
         print '%10s\t%.3f\t%d\t%s' % (exemplar, scistat.pearsonr(predicted, truth)[0],
                                       len(exemplars[exemplar]),
                                       ' '.join('%.2g' % social_scores[k] for k in sample))
+        result[exemplar] = scistat.pearsonr(predicted, truth)[0]
+    return result
 
 
 def diagnose_followers(brand_follower_file, exemplar_follower_file, validation_file, analyze_fn):
@@ -65,7 +69,7 @@ def diagnose_followers(brand_follower_file, exemplar_follower_file, validation_f
     exemplars = analyze.read_follower_file(exemplar_follower_file)
     print 'read follower data for %d exemplars' % (len(exemplars))
     scores = report.read_scores(validation_file)
-    correlation_by_exemplar(brands, exemplars, scores)
+    return correlation_by_exemplar(brands, exemplars, scores, analyze_fn)
 
 
 def main():

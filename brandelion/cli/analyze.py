@@ -50,7 +50,10 @@ def parse_json(json_file):
     for line in io.open(json_file, mode='rt', encoding='utf8'):
         try:
             jj = json.loads(line)
-            yield (jj['user']['screen_name'].lower(), jj['text'])
+            if type(jj) is not list:
+                jj = [jj]
+            for j in jj:
+                yield (j['user']['screen_name'].lower(), j['text'])
         except Exception as e:
             sys.stderr.write('skipping json error: %s\n' % e)
 
@@ -113,15 +116,18 @@ def do_score(vec, coef):
     return np.sum(coef[vec.nonzero()[1]]) / np.sum(coef)
 
 
-def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, outfile):
+def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, outfile, analyze_fn):
+    analyze = getattr(sys.modules[__name__], analyze_fn)
+
     vec = CountVectorizer(min_df=3, preprocessor=preprocess, ngram_range=(2, 2), binary=True)
     _, exemplar_vectors = vectorize(exemplar_tweets_file, vec, dofit=True)
+    print 'read tweets for %d exemplar accounts' % exemplar_vectors.shape[0]
     brands, brand_vectors = vectorize(brand_tweets_file, vec, dofit=False)
+    print 'read tweets for %d brand accounts' % brand_vectors.shape[0]
     _, sample_vectors = vectorize(sample_tweets_file, vec, dofit=False)
-    print 'read %d exemplars, %d brands, %d sample accounts' % (exemplar_vectors.shape[0],
-                                                                brand_vectors.shape[0],
-                                                                sample_vectors.shape[0])
-    scores = chi2(exemplar_vectors, sample_vectors)
+    print 'read tweets for %d sample accounts' % sample_vectors.shape[0]
+
+    scores = analyze(exemplar_vectors, sample_vectors)
     vocab = vec.get_feature_names()
     print 'top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]])
     outf = open(outfile, 'wt')
@@ -160,7 +166,7 @@ def _jaccard(a, b):
     return 1. * len(a & b) / len(a | b)
 
 
-def jaccard(brands, exemplars, weighted_avg=True):
+def jaccard(brands, exemplars, weighted_avg=True, sqrt=False):
     """ Return the average Jaccard similarity between a brand's followers and the
     followers of each exemplar. """
     scores = {}
@@ -171,7 +177,17 @@ def jaccard(brands, exemplars, weighted_avg=True):
         else:
             scores[brand] = 1. * sum(_jaccard(followers, others) for others in exemplars.itervalues()) / len(exemplars)
         # limit to exemplars with less than 40k followers:  scores[brand] = 1. * sum(_jaccard(brands[brand], others) for others in exemplars.itervalues() if len(others) < 40000) / len(exemplars)
+    if sqrt:
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
     return scores
+
+
+def jaccard_simple_avg(brands, exemplars):
+    return jaccard(brands, exemplars, False)
+
+
+def jaccard_sqrt(brands, exemplars):
+    return jaccard(brands, exemplars, weighted_avg=True, sqrt=True)
 
 
 def jaccard_merge(brands, exemplars, weighted_avg=True):
