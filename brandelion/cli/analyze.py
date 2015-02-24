@@ -116,6 +116,14 @@ def do_score(vec, coef):
     return np.sum(coef[vec.nonzero()[1]]) / np.sum(coef)
 
 
+def write_top_words(fname, vocab, scores):
+    outf = io.open(fname, 'w', encoding='utf8')
+    for i in np.argsort(scores)[::-1]:
+        if scores[i] > 0:
+            outf.write('%s %g\n' % (vocab[i], scores[i]))
+    outf.close()
+
+
 def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, outfile, analyze_fn):
     analyze = getattr(sys.modules[__name__], analyze_fn)
 
@@ -129,6 +137,7 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
 
     scores = analyze(exemplar_vectors, sample_vectors)
     vocab = vec.get_feature_names()
+    write_top_words(outfile + '.topwords', vocab, scores)
     print 'top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]])
     outf = open(outfile, 'wt')
     for bi, brand_vec in enumerate(brand_vectors):
