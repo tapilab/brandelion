@@ -74,7 +74,7 @@ def diagnose_followers(brand_follower_file, exemplar_follower_file, validation_f
     mkdirs(output_file)
     outf = open(output_file, 'wt')
     brands = analyze.read_follower_file(brand_follower_file).items()
-    exemplars = analyze.read_follower_file(exemplar_follower_file)
+    exemplars = analyze.read_follower_file(exemplar_follower_file, blacklist=analyze.get_twitter_handles(brand_follower_file))
     print 'read follower data for %d exemplars' % (len(exemplars))
     scores = report.read_scores(validation_file)
     return correlation_by_exemplar(brands, exemplars, scores, analyze_fn, outf)

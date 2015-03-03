@@ -147,17 +147,27 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
 
 ### FOLLOWER ANALYSIS ###
 
+def get_twitter_handles(fname):
+    handles = set()
+    with open(fname, 'rt') as f:
+        for line in f:
+            handles.add(line[:90].split()[0].lower())
+    return handles
 
-def read_follower_file(fname, min_followers=0):
+
+def read_follower_file(fname, min_followers=0, blacklist=set()):
     """ Read a file of follower information and return a dictionary mapping screen_name to a set of follower ids. """
     result = {}
     with open(fname, 'rt') as f:
         for line in f:
             parts = line.split()
             if len(parts) > 2:
-                followers = set(int(x) for x in parts[2:])
-                if len(followers) > min_followers:
-                    result[parts[0].lower()] = followers
+                if parts[0].lower() not in blacklist:
+                    followers = set(int(x) for x in parts[2:])
+                    if len(followers) > min_followers:
+                        result[parts[0].lower()] = followers
+                else:
+                    print 'skipping exemplar', parts[0].lower()
     return result
 
 
@@ -170,12 +180,15 @@ def iter_follower_file(fname):
                 yield parts[0].lower(), set(int(x) for x in parts[2:])
 
 
+# JACCARD
+
+
 def _jaccard(a, b):
     """ Return the Jaccard similarity between two sets a and b. """
     return 1. * len(a & b) / len(a | b)
 
 
-def jaccard(brands, exemplars, weighted_avg=True, sqrt=False):
+def jaccard(brands, exemplars, weighted_avg=False, sqrt=False):
     """ Return the average Jaccard similarity between a brand's followers and the
     followers of each exemplar. """
     scores = {}
@@ -191,15 +204,19 @@ def jaccard(brands, exemplars, weighted_avg=True, sqrt=False):
     return scores
 
 
-def jaccard_simple_avg(brands, exemplars):
-    return jaccard(brands, exemplars, False)
+def jaccard_weighted_avg(brands, exemplars):
+    return jaccard(brands, exemplars, True, False)
+
+
+def jaccard_sqrt_no_weighted_avg(brands, exemplars):
+    return jaccard(brands, exemplars, False, True)
 
 
 def jaccard_sqrt(brands, exemplars):
     return jaccard(brands, exemplars, weighted_avg=True, sqrt=True)
 
 
-def jaccard_merge(brands, exemplars, weighted_avg=True):
+def jaccard_merge(brands, exemplars):
     """ Return the average Jaccard similarity between a brand's followers and
     the followers of each exemplar. We merge all exemplar followers into one
     big pseudo-account."""
@@ -224,6 +241,104 @@ def compute_log_degrees(brands, exemplars):
     for k in counts:
         counts[k] = 1. / math.log(counts[k])
     return counts
+
+
+# PROPORTION
+
+
+def _proportion(a, b):
+    """ Return the len(a & b) / len(a) """
+    return 1. * len(a & b) / len(a)
+
+
+def proportion(brands, exemplars, weighted_avg=False, sqrt=False):
+    """
+    Return the proportion of a brand's followers who also follow an exemplar.
+    """
+    scores = {}
+    for brand, followers in brands:
+        if weighted_avg:
+            scores[brand] = np.average([_proportion(followers, others) for others in exemplars.itervalues()],
+                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+        else:
+            scores[brand] = 1. * sum(_proportion(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+    if sqrt:
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
+    return scores
+
+
+def proportion_weighted_avg(brands, exemplars):
+    return proportion(brands, exemplars, weighted_avg=True, sqrt=False)
+
+
+def proportion_sqrt_no_weighted_avg(brands, exemplars):
+    return proportion(brands, exemplars, weighted_avg=False, sqrt=True)
+
+
+def proportion_sqrt(brands, exemplars):
+    return proportion(brands, exemplars, weighted_avg=True, sqrt=True)
+
+
+def proportion_merge(brands, exemplars):
+    """ Return the proportion of a brand's followers who also follower an
+    exemplar. We merge all exemplar followers into one big pseudo-account."""
+    scores = {}
+    exemplar_followers = set()
+    for followers in exemplars.itervalues():
+        exemplar_followers |= followers
+
+    for brand, followers in brands:
+        scores[brand] = _proportion(followers, exemplar_followers)
+    return scores
+
+
+# COSINE SIMILARITY
+
+
+def _cosine(a, b):
+    """ Return the len(a & b) / len(a) """
+    return 1. * len(a & b) / (math.sqrt(len(a)) * math.sqrt(len(b)))
+
+
+def cosine(brands, exemplars, weighted_avg=False, sqrt=False):
+    """
+    Return the cosine similarity betwee a brand's followers and the exemplars.
+    """
+    scores = {}
+    for brand, followers in brands:
+        if weighted_avg:
+            scores[brand] = np.average([_cosine(followers, others) for others in exemplars.itervalues()],
+                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+        else:
+            scores[brand] = 1. * sum(_cosine(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+    if sqrt:
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
+    return scores
+
+
+def cosine_weighted_avg(brands, exemplars):
+    return cosine(brands, exemplars, weighted_avg=True, sqrt=False)
+
+
+def cosine_sqrt_no_weighted_avg(brands, exemplars):
+    return cosine(brands, exemplars, weighted_avg=False, sqrt=True)
+
+
+def cosine_sqrt(brands, exemplars):
+    return cosine(brands, exemplars, weighted_avg=True, sqrt=True)
+
+
+def cosine_merge(brands, exemplars):
+    """ Return the proportion of a brand's followers who also follower an
+    exemplar. We merge all exemplar followers into one big pseudo-account."""
+    scores = {}
+    exemplar_followers = set()
+    for followers in exemplars.itervalues():
+        exemplar_followers |= followers
+
+    for brand, followers in brands:
+        scores[brand] = _cosine(followers, exemplar_followers)
+    return scores
 
 
 def adamic(brands, exemplars):
@@ -300,7 +415,7 @@ def mkdirs(filename):
 def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn,
                       min_followers, sample_exemplars):
     brands = iter_follower_file(brand_follower_file)
-    exemplars = read_follower_file(exemplar_follower_file, min_followers)
+    exemplars = read_follower_file(exemplar_follower_file, min_followers=min_followers, blacklist=get_twitter_handles(brand_follower_file))
     print 'read follower data for %d exemplars' % (len(exemplars))
     if sample_exemplars < 100:  # sample a subset of exemplars.
         exemplars = dict([(k, exemplars[k]) for k in random.sample(exemplars.keys(), int(len(exemplars) * sample_exemplars / 100.))])
