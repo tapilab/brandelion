@@ -4,7 +4,7 @@
 
 usage:
     brandelion analyze --text --brand-tweets <file> --exemplar-tweets <file> --sample-tweets <file>  --output <file> [--text-method <string>]
-    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>  --min-followers <n> --sample-exemplars <p> --seed <s>]
+    brandelion analyze --network --brand-followers <file> --exemplar-followers <file> --output <file> [--network-method <string>  --min-followers <n> --max-followers <n>  --sample-exemplars <p> --seed <s>]
 
 Options
     -h, --help
@@ -19,6 +19,7 @@ Options
     -t, --text                    Analyze text of tweets.
     -n, --network                 Analyze followers.
     --min-followers <n>           Ignore exemplars that don't have at least n followers [default: 0]
+    --max-followers <n>           Ignore exemplars that have more than least n followers [default: 1e10]
     --sample-exemplars <p>        Sample p percent of the exemplars, uniformly at random. [default: 100]
     --seed <s>                    Seed for random sampling. [default: 12345]
 """
@@ -155,7 +156,7 @@ def get_twitter_handles(fname):
     return handles
 
 
-def read_follower_file(fname, min_followers=0, blacklist=set()):
+def read_follower_file(fname, min_followers=0, max_followers=1e10, blacklist=set()):
     """ Read a file of follower information and return a dictionary mapping screen_name to a set of follower ids. """
     result = {}
     with open(fname, 'rt') as f:
@@ -164,7 +165,7 @@ def read_follower_file(fname, min_followers=0, blacklist=set()):
             if len(parts) > 2:
                 if parts[0].lower() not in blacklist:
                     followers = set(int(x) for x in parts[2:])
-                    if len(followers) > min_followers:
+                    if len(followers) > min_followers and len(followers) <= max_followers:
                         result[parts[0].lower()] = followers
                 else:
                     print 'skipping exemplar', parts[0].lower()
@@ -413,9 +414,9 @@ def mkdirs(filename):
 
 
 def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, analyze_fn,
-                      min_followers, sample_exemplars):
+                      min_followers, max_followers, sample_exemplars):
     brands = iter_follower_file(brand_follower_file)
-    exemplars = read_follower_file(exemplar_follower_file, min_followers=min_followers, blacklist=get_twitter_handles(brand_follower_file))
+    exemplars = read_follower_file(exemplar_follower_file, min_followers=min_followers, max_followers=max_followers, blacklist=get_twitter_handles(brand_follower_file))
     print 'read follower data for %d exemplars' % (len(exemplars))
     if sample_exemplars < 100:  # sample a subset of exemplars.
         exemplars = dict([(k, exemplars[k]) for k in random.sample(exemplars.keys(), int(len(exemplars) * sample_exemplars / 100.))])
@@ -438,7 +439,7 @@ def main():
         random.seed(args['--seed'])
     if args['--network']:
         analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'],
-                          int(args['--min-followers']), float(args['--sample-exemplars']))
+                          int(args['--min-followers']), int(args['--max-followers']), float(args['--sample-exemplars']))
     if args['--text']:
         analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'], args['--text-method'])
 
