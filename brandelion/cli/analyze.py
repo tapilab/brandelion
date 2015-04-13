@@ -28,6 +28,7 @@ from collections import Counter, defaultdict
 from docopt import docopt
 import io
 from itertools import groupby
+import gzip
 import json
 import math
 import numpy as np
@@ -48,7 +49,11 @@ from . import report
 
 def parse_json(json_file):
     """ Yield screen_name, text tuples from a json file. """
-    for line in io.open(json_file, mode='rt', encoding='utf8'):
+    if json_file[-2:] == 'gz':
+        fh = gzip.open(json_file, 'rb')
+    else:
+        fh = io.open(json_file, mode='rt', encoding='utf8')
+    for line in fh:
         try:
             jj = json.loads(line)
             if type(jj) is not list:
