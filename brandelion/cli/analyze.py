@@ -47,7 +47,7 @@ from . import report
 ### TEXT ANALYSIS ###
 
 
-def parse_json(json_file):
+def parse_json(json_file, include_date=False):
     """ Yield screen_name, text tuples from a json file. """
     if json_file[-2:] == 'gz':
         fh = gzip.open(json_file, 'rb')
@@ -59,7 +59,10 @@ def parse_json(json_file):
             if type(jj) is not list:
                 jj = [jj]
             for j in jj:
-                yield (j['user']['screen_name'].lower(), j['text'])
+                if include_date:
+                    yield (j['user']['screen_name'].lower(), j['text'], j['created_at'])
+                else:
+                    yield (j['user']['screen_name'].lower(), j['text'])
         except Exception as e:
             sys.stderr.write('skipping json error: %s\n' % e)
 
