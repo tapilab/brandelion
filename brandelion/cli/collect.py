@@ -25,7 +25,9 @@ import json
 import re
 import requests
 import sys
+import time
 import traceback
+import requests
 
 import twutil
 
@@ -71,29 +73,53 @@ def fetch_tweets(account_file, outfile, limit):
             outf.flush()
 
 
-def fetch_exemplars(keyword, outfile, n=2):
+def fetch_lists(keyword, max_results=20):
+    """
+    Fetch the urls of up to max_results Twitter lists that match the provided keyword.
+    >>> len(fetch_lists('politics', max_results=4))
+    4
+    """
+    res_per_page = 8
+    start = 0
+    results = []
+    while len(results) < max_results:
+        url = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=site:twitter.com+inurl:lists+%s&rsz=%d&start=%d' % (keyword,
+                                                                                                                               res_per_page,
+                                                                                                                               start)
+        js = json.loads(requests.get(url).text)
+        if 'results' in js['responseData']:
+            for r in js['responseData']['results']:
+                results.append(r['url'])
+        else:
+            return results[:max_results]
+        start += res_per_page
+        time.sleep(.4)
+    return results[:max_results]
+
+
+def fetch_list_members(list_url):
+    """ Get all members of the list specified by the given url. E.g., https://twitter.com/lore77/lists/libri-cultura-education """
+    match = re.match(r'.+twitter\.com\/(.+)\/lists\/(.+)', list_url)
+    if not match:
+        print 'cannot parse list url %s', list_url
+        return []
+    screen_name, slug = match.groups()
+    print 'collecting list %s/%s' % (screen_name, slug)
+    return twutil.collect.list_members(slug, screen_name)
+
+
+def fetch_exemplars(keyword, outfile, n=50):
     """ Fetch top lists matching this keyword, then return Twitter screen
-    names that appear on at least n lists. """
-    url= 'https://twitter.com/search?q=%s&src=typd&mode=timelines' % keyword
-    print 'fetching', url
+    names along with the number of different lists on which each appers.. """
+    list_urls = fetch_lists(keyword, n)
+    print 'found %d lists for %s' % (len(list_urls), keyword)
     counts = Counter()
-    try:
-        text = requests.get(url).text
-        # Find all lists on the first page of results
-        for screen_name, slug in re.findall(r'<a class=\"js-nav\" data-nav=\"list_members\" href=\"\/([^\/]+)\/lists\/([^\/]+)\/members"', text):
-            members = twutil.collect.list_members(slug, screen_name)
-            if len(members) > 0:
-                counts.update(members)
-    except:
-        print 'unable to fetch url'
-        ex_type, ex, tb = sys.exc_info()
-        traceback.print_tb(tb)
-        print ex
-    # Keep those appearing at least n times.
-    exemplars = [name for name in counts if counts[name] >= n]
+    for list_url in list_urls:
+        counts.update(fetch_list_members(list_url))
     # Write to file.
-    outf = open(outfile, 'wb')
-    outf.write('\n'.join(exemplars))
+    outf = io.open(outfile, 'wt', encoding='utf8')
+    for handle in sorted(counts):
+        outf.write('%s\t%d\n' % (handle, counts[handle]))
     outf.close()
     print 'saved exemplars to', outfile
 
