@@ -38,7 +38,7 @@ def iter_lines(filename):
         for line in idfile:
             screen_name = line.strip()
             if len(screen_name) > 0:
-                yield screen_name
+                yield screen_name.split()[0]
 
 
 def fetch_followers(account_file, outfile, limit):
@@ -87,11 +87,12 @@ def fetch_lists(keyword, max_results=20):
                                                                                                                                res_per_page,
                                                                                                                                start)
         js = json.loads(requests.get(url).text)
-        if 'results' in js['responseData']:
+        if not js['responseData']:
+            print 'something went wrong in google search:\n', js
+            return results[:max_results]
+        else:
             for r in js['responseData']['results']:
                 results.append(r['url'])
-        else:
-            return results[:max_results]
         start += res_per_page
         time.sleep(.4)
     return results[:max_results]
