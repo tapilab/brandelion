@@ -44,7 +44,7 @@ def validate(scores, validation, title, outdir, doplot=True):
     predicted = [scores[k] for k in keys]
     truth = [validation[k] for k in keys]
     corr = scistat.pearsonr(predicted, truth)
-    print 'Pearson:', corr
+    print('Pearson:', corr)
     if doplot:
         plt.figure()
         plt.scatter(predicted, truth)

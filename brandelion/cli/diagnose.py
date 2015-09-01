@@ -40,7 +40,7 @@ def validate(scores, validation):
     keys = sorted(validation.keys())
     predicted = [scores[k] for k in keys]
     truth = [validation[k] for k in keys]
-    print 'Pearson:', scistat.pearsonr(predicted, truth)
+    print('Pearson:', scistat.pearsonr(predicted, truth))
 
 
 def diagnose_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, validation_file):
@@ -75,14 +75,14 @@ def diagnose_followers(brand_follower_file, exemplar_follower_file, validation_f
     outf = open(output_file, 'wt')
     brands = analyze.read_follower_file(brand_follower_file).items()
     exemplars = analyze.read_follower_file(exemplar_follower_file, blacklist=analyze.get_twitter_handles(brand_follower_file))
-    print 'read follower data for %d exemplars' % (len(exemplars))
+    print('read follower data for %d exemplars' % (len(exemplars)))
     scores = report.read_scores(validation_file)
     return correlation_by_exemplar(brands, exemplars, scores, analyze_fn, outf)
 
 
 def main():
     args = docopt(__doc__)
-    print args
+    print(args)
     if '--network' in args:
         diagnose_followers(args['--brand-followers'], args['--exemplar-followers'], args['--validation'], args['--network-method'], args['--output'])
     if '--text' in args:

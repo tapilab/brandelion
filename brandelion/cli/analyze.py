@@ -50,7 +50,7 @@ from . import report
 def parse_json(json_file, include_date=False):
     """ Yield screen_name, text tuples from a json file. """
     if json_file[-2:] == 'gz':
-        fh = gzip.open(json_file, 'rb')
+        fh = gzip.open(json_file, 'rt')
     else:
         fh = io.open(json_file, mode='rt', encoding='utf8')
     for line in fh:
@@ -138,16 +138,16 @@ def analyze_text(brand_tweets_file, exemplar_tweets_file, sample_tweets_file, ou
 
     vec = CountVectorizer(min_df=3, preprocessor=preprocess, ngram_range=(2, 2), binary=True)
     _, exemplar_vectors = vectorize(exemplar_tweets_file, vec, dofit=True)
-    print 'read tweets for %d exemplar accounts' % exemplar_vectors.shape[0]
+    print('read tweets for %d exemplar accounts' % exemplar_vectors.shape[0])
     brands, brand_vectors = vectorize(brand_tweets_file, vec, dofit=False)
-    print 'read tweets for %d brand accounts' % brand_vectors.shape[0]
+    print('read tweets for %d brand accounts' % brand_vectors.shape[0])
     _, sample_vectors = vectorize(sample_tweets_file, vec, dofit=False)
-    print 'read tweets for %d sample accounts' % sample_vectors.shape[0]
+    print('read tweets for %d sample accounts' % sample_vectors.shape[0])
 
     scores = analyze(exemplar_vectors, sample_vectors)
     vocab = vec.get_feature_names()
     write_top_words(outfile + '.topwords', vocab, scores)
-    print 'top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]])
+    print('top 10 ngrams:\n', '\n'.join(['%s=%.4g' % (vocab[i], scores[i]) for i in np.argsort(scores)[::-1][:10]]))
     outf = open(outfile, 'wt')
     for bi, brand_vec in enumerate(brand_vectors):
         outf.write('%s %g\n' % (brands[bi], do_score(brand_vec, scores)))
@@ -176,7 +176,7 @@ def read_follower_file(fname, min_followers=0, max_followers=1e10, blacklist=set
                     if len(followers) > min_followers and len(followers) <= max_followers:
                         result[parts[0].lower()] = followers
                 else:
-                    print 'skipping exemplar', parts[0].lower()
+                    print('skipping exemplar', parts[0].lower())
     return result
 
 
@@ -425,10 +425,10 @@ def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, anal
                       min_followers, max_followers, sample_exemplars):
     brands = iter_follower_file(brand_follower_file)
     exemplars = read_follower_file(exemplar_follower_file, min_followers=min_followers, max_followers=max_followers, blacklist=get_twitter_handles(brand_follower_file))
-    print 'read follower data for %d exemplars' % (len(exemplars))
+    print('read follower data for %d exemplars' % (len(exemplars)))
     if sample_exemplars < 100:  # sample a subset of exemplars.
         exemplars = dict([(k, exemplars[k]) for k in random.sample(exemplars.keys(), int(len(exemplars) * sample_exemplars / 100.))])
-        print 'sampled %d exemplars' % (len(exemplars))
+        print('sampled %d exemplars' % (len(exemplars)))
     analyze = getattr(sys.modules[__name__], analyze_fn)
     scores = analyze(brands, exemplars)
     mkdirs(outfile)
@@ -437,12 +437,12 @@ def analyze_followers(brand_follower_file, exemplar_follower_file, outfile, anal
         outf.write('%s %g\n' % (brand, scores[brand]))
         outf.flush()
     outf.close()
-    print 'results written to', outfile
+    print('results written to', outfile)
 
 
 def main():
     args = docopt(__doc__)
-    print args
+    print(args)
     if '--seed' in args:
         random.seed(args['--seed'])
     if args['--network']:
