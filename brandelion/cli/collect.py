@@ -4,12 +4,13 @@
 
 usage:
     brandelion collect --tweets --input <file> --output <file> --max=<N>
-    brandelion collect --followers --input <file> --output <file> --max=<N>
+    brandelion collect --followers --input <file> --output <file> --max=<N> [--loop]
     brandelion collect --exemplars --query <string>  --output <file>
 
 Options
     -h, --help
     -i, --input <file>              File containing list of Twitter accounts, one per line.
+    -l, --loop                      If true, keep looping to collect more data continuously.
     -o, --output <file>             File to store results
     -t, --tweets                    Fetch tweets.
     -f, --followers                 Fetch followers
@@ -19,7 +20,9 @@ Options
 """
 
 from collections import Counter
+import datetime
 from docopt import docopt
+import gzip
 import io
 import json
 import re
@@ -41,24 +44,33 @@ def iter_lines(filename):
                 yield screen_name.split()[0]
 
 
-def fetch_followers(account_file, outfile, limit):
+def fetch_followers(account_file, outfile, limit, do_loop):
     """ Fetch up to limit followers for each Twitter account in
     account_file. Write results to outfile file in format:
 
     screen_name user_id follower_id_1 follower_id_2 ..."""
     print 'Fetching followers for accounts in', account_file
-    outf = open(outfile, 'wb')
-    for screen_name in iter_lines(account_file):
-        ids = list(twutil.collect.lookup_ids([screen_name]))
-        if len(ids) > 0:
+    niters = 1
+    while True:
+        outf = gzip.open(outfile, 'wt')
+        for screen_name in iter_lines(account_file):
+            timestamp = datetime.datetime.now().isoformat()
             print 'collecting followers for', screen_name
-            id_ = ids[0]
-            followers = twutil.collect.followers_for_id(id_, limit)
+            followers = twutil.collect.followers_for_screen_name(screen_name, limit)
             if len(followers) > 0:
-                outf.write('%s %s %s\n' % (screen_name, id_, ' '.join(followers)))
+                outf.write('%s %s %s\n' % (timestamp, screen_name, ' '.join(followers)))
                 outf.flush()
+            else:
+                print 'unknown user', screen_name
+        outf.close()
+        if not do_loop:
+            return
         else:
-            print 'unknown user', screen_name
+            if niters == 1:
+                outfile = '%s.%d' % (outfile, niters)
+            else:
+                outfile = '%s.%d' % (outfile[:-2], niters)
+            niters += 1
 
 
 def fetch_tweets(account_file, outfile, limit):
@@ -128,7 +140,7 @@ def fetch_exemplars(keyword, outfile, n=50):
 def main():
     args = docopt(__doc__)
     if args['--followers']:
-        fetch_followers(args['--input'], args['--output'], int(args['--max']))
+        fetch_followers(args['--input'], args['--output'], int(args['--max']), args['--loop'])
     elif args['--tweets']:
         fetch_tweets(args['--input'], args['--output'], int(args['--max']))
     else:
