@@ -354,7 +354,7 @@ def adamic(brands, exemplars):
     """ Return the average Adamic/Adar similarity between a brand's followers
     and the followers of each exemplar. We approximate the number of followed
     accounts per user by only considering those in our brand set."""
-    print 'adamic deprecated...requires loading all brands in memory.'
+    print('adamic deprecated...requires loading all brands in memory.')
     return
     degrees = compute_log_degrees(brands, exemplars)
     scores = {}
