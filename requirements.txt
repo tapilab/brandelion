@@ -1,1 +1,7 @@
-wheel==0.23.0
+docopt
+matplotlib
+numpy
+requests
+scipy
+sklearn
+twutil
