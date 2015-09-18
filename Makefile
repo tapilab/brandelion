@@ -1,5 +1,7 @@
 .PHONY: clean-pyc clean-build docs clean
 
+PYTHON=python3
+
 help:
 	@echo "clean - remove all build, test, coverage and Python artifacts"
 	@echo "clean-build - remove build artifacts"
@@ -35,7 +37,7 @@ lint:
 	flake8 brandelion tests
 
 test:
-	python setup.py test
+	$(PYTHON) setup.py test
 
 test-all:
 	tox
@@ -55,10 +57,10 @@ docs:
 	open docs/_build/html/index.html
 
 release: clean
-	python setup.py sdist upload
-	python setup.py bdist_wheel upload
+	$(PYTHON) setup.py sdist upload
+	$(PYTHON) setup.py bdist_wheel upload
 
 dist: clean
-	python setup.py sdist
-	python setup.py bdist_wheel
+	$(PYTHON) setup.py sdist
+	$(PYTHON) setup.py bdist_wheel
 	ls -l dist
