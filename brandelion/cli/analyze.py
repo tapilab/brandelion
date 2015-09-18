@@ -170,23 +170,26 @@ def read_follower_file(fname, min_followers=0, max_followers=1e10, blacklist=set
     with open(fname, 'rt') as f:
         for line in f:
             parts = line.split()
-            if len(parts) > 2:
-                if parts[0].lower() not in blacklist:
+            if len(parts) > 3:
+                if parts[1].lower() not in blacklist:
                     followers = set(int(x) for x in parts[2:])
                     if len(followers) > min_followers and len(followers) <= max_followers:
-                        result[parts[0].lower()] = followers
+                        result[parts[1].lower()] = followers
                 else:
-                    print('skipping exemplar', parts[0].lower())
+                    print('skipping exemplar', parts[1].lower())
     return result
 
 
 def iter_follower_file(fname):
-    """ Iterator from a file of follower information and return a tuple of screen_name, follower ids. """
+    """ Iterator from a file of follower information and return a tuple of screen_name, follower ids.
+    File format is:
+    <iso timestamp> <screen_name> <follower_id1> <follower_ids2> ...
+    """
     with open(fname, 'rt') as f:
         for line in f:
             parts = line.split()
-            if len(parts) > 2:
-                yield parts[0].lower(), set(int(x) for x in parts[2:])
+            if len(parts) > 3:
+                yield parts[1].lower(), set(int(x) for x in parts[2:])
 
 
 # JACCARD
@@ -203,13 +206,13 @@ def jaccard(brands, exemplars, weighted_avg=False, sqrt=False):
     scores = {}
     for brand, followers in brands:
         if weighted_avg:
-            scores[brand] = np.average([_jaccard(followers, others) for others in exemplars.itervalues()],
-                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+            scores[brand] = np.average([_jaccard(followers, others) for others in exemplars.values()],
+                                       weights=[1. / len(others) for others in exemplars.values()])
         else:
-            scores[brand] = 1. * sum(_jaccard(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+            scores[brand] = 1. * sum(_jaccard(followers, others) for others in exemplars.values()) / len(exemplars)
         # limit to exemplars with less than 40k followers:  scores[brand] = 1. * sum(_jaccard(brands[brand], others) for others in exemplars.itervalues() if len(others) < 40000) / len(exemplars)
     if sqrt:
-        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.items()])
     return scores
 
 
@@ -231,7 +234,7 @@ def jaccard_merge(brands, exemplars):
     big pseudo-account."""
     scores = {}
     exemplar_followers = set()
-    for followers in exemplars.itervalues():
+    for followers in exemplars.values():
         exemplar_followers |= followers
 
     for brand, followers in brands:
@@ -267,12 +270,12 @@ def proportion(brands, exemplars, weighted_avg=False, sqrt=False):
     scores = {}
     for brand, followers in brands:
         if weighted_avg:
-            scores[brand] = np.average([_proportion(followers, others) for others in exemplars.itervalues()],
-                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+            scores[brand] = np.average([_proportion(followers, others) for others in exemplars.values()],
+                                       weights=[1. / len(others) for others in exemplars.values()])
         else:
-            scores[brand] = 1. * sum(_proportion(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+            scores[brand] = 1. * sum(_proportion(followers, others) for others in exemplars.values()) / len(exemplars)
     if sqrt:
-        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.items()])
     return scores
 
 
@@ -293,7 +296,7 @@ def proportion_merge(brands, exemplars):
     exemplar. We merge all exemplar followers into one big pseudo-account."""
     scores = {}
     exemplar_followers = set()
-    for followers in exemplars.itervalues():
+    for followers in exemplars.values():
         exemplar_followers |= followers
 
     for brand, followers in brands:
@@ -316,12 +319,12 @@ def cosine(brands, exemplars, weighted_avg=False, sqrt=False):
     scores = {}
     for brand, followers in brands:
         if weighted_avg:
-            scores[brand] = np.average([_cosine(followers, others) for others in exemplars.itervalues()],
-                                       weights=[1. / len(others) for others in exemplars.itervalues()])
+            scores[brand] = np.average([_cosine(followers, others) for others in exemplars.values()],
+                                       weights=[1. / len(others) for others in exemplars.values()])
         else:
-            scores[brand] = 1. * sum(_cosine(followers, others) for others in exemplars.itervalues()) / len(exemplars)
+            scores[brand] = 1. * sum(_cosine(followers, others) for others in exemplars.values()) / len(exemplars)
     if sqrt:
-        scores = dict([(b, math.sqrt(s)) for b, s in scores.iteritems()])
+        scores = dict([(b, math.sqrt(s)) for b, s in scores.items()])
     return scores
 
 
@@ -342,7 +345,7 @@ def cosine_merge(brands, exemplars):
     exemplar. We merge all exemplar followers into one big pseudo-account."""
     scores = {}
     exemplar_followers = set()
-    for followers in exemplars.itervalues():
+    for followers in exemplars.values():
         exemplar_followers |= followers
 
     for brand, followers in brands:
@@ -447,7 +450,7 @@ def main():
         random.seed(args['--seed'])
     if args['--network']:
         analyze_followers(args['--brand-followers'], args['--exemplar-followers'], args['--output'], args['--network-method'],
-                          int(args['--min-followers']), int(args['--max-followers']), float(args['--sample-exemplars']))
+                          int(args['--min-followers']), int(float(args['--max-followers'])), float(args['--sample-exemplars']))
     if args['--text']:
         analyze_text(args['--brand-tweets'], args['--exemplar-tweets'], args['--sample-tweets'], args['--output'], args['--text-method'])
 
