@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 #import codecs
-from configparser import RawConfigParser
 import os
 import sys
+
+try:
+    from configparser import RawConfigParser as ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
 
 __author__ = 'Aron Culotta'
 __email__ = 'aronwc@gmail.com'
 __version__ = '0.1.0'
 
-config = RawConfigParser()
+config = ConfigParser()
 if 'BRANDELION_CFG' in os.environ:
     config.read(os.environ['BRANDELION_CFG'])
 else:
