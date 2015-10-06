@@ -3,5 +3,4 @@ matplotlib
 numpy
 requests
 scipy
-sklearn
 twutil

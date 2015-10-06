@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
+import os
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
+# read requirements
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
-
-requirements = [
-    # TODO: put package requirements here
-]
 
 test_requirements = [
     # TODO: put package test requirements here
@@ -21,7 +20,7 @@ test_requirements = [
 
 setup(
     name='brandelion',
-    version='0.1.2',
+    version='0.1.3',
     description='Social media brand analytics',
     long_description=readme + '\n\n' + history,
     author='Aron Culotta',

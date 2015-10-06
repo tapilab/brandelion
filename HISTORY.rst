@@ -2,6 +2,10 @@
 
 History
 -------
+0.1.3 (2015-10-06)
+---------------------
+* Correctly specify requirements in setup.py
+
 0.1.2 (2015-10-06)
 ---------------------
 * Fix packaging bug
