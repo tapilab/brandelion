@@ -21,7 +21,7 @@ test_requirements = [
 
 setup(
     name='brandelion',
-    version='0.1.1',
+    version='0.1.2',
     description='Social media brand analytics',
     long_description=readme + '\n\n' + history,
     author='Aron Culotta',
@@ -29,6 +29,7 @@ setup(
     url='https://github.com/tapilab/brandelion',
     packages=[
         'brandelion',
+        'brandelion/cli',
     ],
     package_dir={'brandelion':
                  'brandelion'},
