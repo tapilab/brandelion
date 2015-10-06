@@ -20,7 +20,7 @@ test_requirements = [
 
 setup(
     name='brandelion',
-    version='0.1.4',
+    version='0.1.5',
     description='Social media brand analytics',
     long_description=readme + '\n\n' + history,
     author='Aron Culotta',
