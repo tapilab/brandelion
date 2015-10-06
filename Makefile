@@ -1,6 +1,6 @@
 .PHONY: clean-pyc clean-build docs clean
 
-PYTHON=python3
+PYTHON=python2
 
 help:
 	@echo "clean - remove all build, test, coverage and Python artifacts"
