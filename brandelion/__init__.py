@@ -10,7 +10,7 @@ except ImportError:
 
 __author__ = 'Aron Culotta'
 __email__ = 'aronwc@gmail.com'
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 config = ConfigParser()
 if 'BRANDELION_CFG' in os.environ:
