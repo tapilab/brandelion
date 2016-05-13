@@ -69,7 +69,7 @@ def fetch_followers(account_file, outfile, limit, do_loop):
             if niters == 1:
                 outfile = '%s.%d' % (outfile, niters)
             else:
-                outfile = '%s.%d' % (outfile[:-2], niters)
+                outfile = outfile[:outfile.rindex('.')] + '.%d' % niters
             niters += 1
 
 
