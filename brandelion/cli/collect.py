@@ -77,11 +77,11 @@ def fetch_tweets(account_file, outfile, limit):
     """ Fetch up to limit tweets for each account in account_file and write to
     outfile. """
     print('fetching tweets for accounts in', account_file)
-    outf = io.open(outfile, 'wt', encoding='utf8')
+    outf = io.open(outfile, 'wt')
     for screen_name in iter_lines(account_file):
         print('\nFetching tweets for %s' % screen_name)
         for tweet in twutil.collect.tweets_for_user(screen_name, limit):
-            outf.write('%s\n' % json.dumps(tweet, ensure_ascii=False, encoding='utf8'))
+            outf.write('%s\n' % json.dumps(tweet, ensure_ascii=False))
             outf.flush()
 
 
@@ -130,7 +130,7 @@ def fetch_exemplars(keyword, outfile, n=50):
     for list_url in list_urls:
         counts.update(fetch_list_members(list_url))
     # Write to file.
-    outf = io.open(outfile, 'wt', encoding='utf8')
+    outf = io.open(outfile, 'wt')
     for handle in sorted(counts):
         outf.write('%s\t%d\n' % (handle, counts[handle]))
     outf.close()
