@@ -2,6 +2,9 @@
 
 History
 ---------------------
+0.1.7 (2017-01-23)
+* bugfixes
+
 
 0.1.4 (2015-10-06)
 * require scikit-learn
