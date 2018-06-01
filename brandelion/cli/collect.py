@@ -34,6 +34,12 @@ import requests
 
 import twutil
 
+import json
+import time
+
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError as GoogleHttpError
+
 
 def iter_lines(filename):
     """ Iterate over screen names in a file, one per line."""
@@ -85,30 +91,63 @@ def fetch_tweets(account_file, outfile, limit):
             outf.flush()
 
 
-def fetch_lists(keyword, max_results=20):
+#DEPRECATED
+# def fetch_lists(keyword, max_results=20):
+#     """
+#     Fetch the urls of up to max_results Twitter lists that match the provided keyword.
+#     >>> len(fetch_lists('politics', max_results=4))
+#     4
+#     """
+#     res_per_page = 8
+#     start = 0
+#     results = []
+#     while len(results) < max_results:
+#         url = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=site:twitter.com+inurl:lists+%s&rsz=%d&start=%d' % (keyword,
+#                                                                                                                                res_per_page,
+#                                                                                                                                start)
+#         js = json.loads(requests.get(url).text)
+#         if not js['responseData']:
+#             print('something went wrong in google search:\n', js)
+#             return results[:max_results]
+#         else:
+#             for r in js['responseData']['results']:
+#                 results.append(r['url'])
+#         start += res_per_page
+#         time.sleep(.4)
+#     return results[:max_results]
+
+
+#NEW FETCH lists
+def google_search(search_term, api_key, cse_id, **kwargs):
+    final_urls = []
+    try:
+        service = build("customsearch", "v1", developerKey=api_key)
+        res = service.cse().list(q=search_term, cx=cse_id, **kwargs).execute()
+        for item in res['items']:
+            final_urls.append(item['formattedUrl'])
+        return final_urls
+    except GoogleHttpError:
+        print("something wrong with Google HTTP Errpr")
+        return final_urls
+
+
+def fetch_lists(keyword,api_key,cse_id,max_results=20):
     """
     Fetch the urls of up to max_results Twitter lists that match the provided keyword.
     >>> len(fetch_lists('politics', max_results=4))
     4
     """
-    res_per_page = 8
-    start = 0
     results = []
-    while len(results) < max_results:
-        url = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q=site:twitter.com+inurl:lists+%s&rsz=%d&start=%d' % (keyword,
-                                                                                                                               res_per_page,
-                                                                                                                               start)
-        js = json.loads(requests.get(url).text)
-        if not js['responseData']:
-            print('something went wrong in google search:\n', js)
-            return results[:max_results]
-        else:
-            for r in js['responseData']['results']:
-                results.append(r['url'])
-        start += res_per_page
-        time.sleep(.4)
+    start_c = 1
+    search_term = "inurl:lists + "+keyword
+    while len(results)<max_results:
+        temp_res = google_search(search_term,api_key,cse_id,num=10,start=start_c)
+        if len(temp_res) == 0:
+            print("Google API Error, returning retrieved results")
+            return results
+        results.extend(temp_res)
+        start_c += 10
     return results[:max_results]
-
 
 def fetch_list_members(list_url):
     """ Get all members of the list specified by the given url. E.g., https://twitter.com/lore77/lists/libri-cultura-education """
