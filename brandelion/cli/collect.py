@@ -37,6 +37,11 @@ import twutil
 import json
 import time
 
+try:
+    from configparser import RawConfigParser as ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser
+
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError as GoogleHttpError
 
@@ -131,12 +136,18 @@ def google_search(search_term, api_key, cse_id, **kwargs):
         return final_urls
 
 
-def fetch_lists(keyword,api_key,cse_id,max_results=20):
+def fetch_lists(keyword,max_results=20):
     """
     Fetch the urls of up to max_results Twitter lists that match the provided keyword.
     >>> len(fetch_lists('politics', max_results=4))
     4
     """
+    #CONFIG FILE READ
+    config = ConfigParser()
+    config.read('CSE_CFG.ini')
+    api_key=config.get('GOOGLE_CSE_KEYS','API_KEY')
+    cse_id=config.get('GOOGLE_CSE_KEYS','CSE_ID')
+
     results = []
     start_c = 1
     search_term = "inurl:lists + "+keyword
