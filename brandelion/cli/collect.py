@@ -37,10 +37,8 @@ import twutil
 import json
 import time
 
-try:
-    from configparser import RawConfigParser as ConfigParser
-except ImportError:
-    from ConfigParser import ConfigParser
+##import config from init.py:
+from .. import config
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError as GoogleHttpError
@@ -143,8 +141,6 @@ def fetch_lists(keyword,max_results=20):
     4
     """
     #CONFIG FILE READ
-    config = ConfigParser()
-    config.read('CSE_CFG.ini')
     api_key=config.get('GOOGLE_CSE_KEYS','API_KEY')
     cse_id=config.get('GOOGLE_CSE_KEYS','CSE_ID')
 
