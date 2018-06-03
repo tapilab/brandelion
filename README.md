@@ -2,10 +2,9 @@
 
 **Social media brand analysis**
 
-1. Set an environmental variable for the `brandelion` data directory:
+1. Copy the .brandelion config file to your home directory `~.brandelion`.  Edit the config file to specify the output path and the Google API keys (the latter are only needed if you'll be fetching exemplars by keyword).
 
-  `export BRANDELION=/data/brandelion`
-
+ 
 2. Create a list of brand Twitter accounts and store in `$BRANDELION/brands.txt`.
   ```
   $ cat $BRANDELION/brands.txt
@@ -55,7 +54,13 @@
    fetched 200 more tweets for 5hourenergy
    ```
 
-5. Create a file called `exemplars.txt` containing exemplars for the dimension you wish to analyze. For example, here we choose environmental friendliness.
+5. Create a list of exemplar Twitter accounts. You can either do this manually, or use the collect script to search by keyword. E.g., 
+   ```
+   $ brandelion collect --exemplars --query environment --output exemplars.txt
+    ```
+    will search for accounts on Twitter Lists that match the keyword "environment". The output file stores how many distinct list this account appears on, which you can use to filter to the most common accounts.
+
+   Store the final list of exemplars in $BRANDELION/exemplars.txt
    ```
    $ cat $BRANDELION/exemplars.txt
    GreenPeace
