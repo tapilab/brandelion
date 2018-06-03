@@ -2,7 +2,7 @@
 
 **Social media brand analysis**
 
-1. Copy the .brandelion config file to your home directory `~.brandelion`.  Edit the config file to specify the output path and the Google API keys (the latter are only needed if you'll be fetching exemplars by keyword).
+1. Copy the .brandelion config file to your home directory `~/.brandelion`.  Edit the config file to specify the output path and the [Google Search API keys](https://developers.google.com/custom-search/json-api/v1/overview) (the latter are only needed if you'll be fetching exemplars by keyword).
 
  
 2. Create a list of brand Twitter accounts and store in `$BRANDELION/brands.txt`.
