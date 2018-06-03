@@ -160,7 +160,7 @@ def fetch_list_members(list_url):
     """ Get all members of the list specified by the given url. E.g., https://twitter.com/lore77/lists/libri-cultura-education """
     match = re.match(r'.+twitter\.com\/(.+)\/lists\/(.+)', list_url)
     if not match:
-        print('cannot parse list url %s', list_url)
+        print('cannot parse list url %s' % list_url)
         return []
     screen_name, slug = match.groups()
     print('collecting list %s/%s' % (screen_name, slug))
