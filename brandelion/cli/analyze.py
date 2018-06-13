@@ -62,7 +62,11 @@ def parse_json(json_file, include_date=False):
                 if include_date:
                     yield (j['user']['screen_name'].lower(), j['text'], j['created_at'])
                 else:
-                    yield (j['user']['screen_name'].lower(), j['text'])
+                    if 'full_text' in j: # get untruncated text if available.
+                        yield (j['user']['screen_name'].lower(), j['full_text'])
+                    else:
+                        yield (j['user']['screen_name'].lower(), j['text'])
+
         except Exception as e:
             sys.stderr.write('skipping json error: %s\n' % e)
 
