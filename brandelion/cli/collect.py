@@ -90,6 +90,7 @@ def fetch_tweets(account_file, outfile, limit):
     for screen_name in iter_lines(account_file):
         print('\nFetching tweets for %s' % screen_name)
         for tweet in twutil.collect.tweets_for_user(screen_name, limit):
+            tweet['user']['screen_name'] = screen_name
             outf.write('%s\n' % json.dumps(tweet, ensure_ascii=False))
             outf.flush()
 
